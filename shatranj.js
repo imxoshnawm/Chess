@@ -1,4 +1,4 @@
-// بەکارهێنانی دەستەی یاری شەتڕەنج
+// Chess Game Board Setup
 let board = null;
 let game = new Chess();
 let playerColor = 'white';
@@ -6,7 +6,7 @@ let computerThinking = false;
 let gameActive = false;
 let playerTimer = null;
 let aiTimer = null;
-let gameTime = 10 * 60; // بە چرکە (10 خولەک)
+let gameTime = 10 * 60; // In seconds (10 minutes)
 let timeLeft = {
     player: gameTime,
     ai: gameTime
@@ -15,10 +15,35 @@ let difficulty = 'medium';
 let moveHistory = [];
 let currentPromotion = null;
 
-// دامەزراندنی API بۆ OpenAI
-const OPENAI_API_KEY = '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'; // لێرە API کلیلی خۆت دابنێ بەڵام لە کۆدی کۆتاییدا نەیهێڵە
+// OpenAI API Setup
+const OPENAI_API_KEY = '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'; // Add your API key here but remove it from final code
+// Unicode Piece Setup
+const unicodePieces = {
+    'wK': '♔', // White King
+    'wQ': '♕', // White Queen
+    'wR': '♖', // White Rook
+    'wB': '♗', // White Bishop
+    'wN': '♘', // White Knight
+    'wP': '♙', // White Pawn
+    'bK': '♚', // Black King
+    'bQ': '♛', // Black Queen
+    'bR': '♜', // Black Rook
+    'bB': '♝', // Black Bishop
+    'bN': '♞', // Black Knight
+    'bP': '♟', // Black Pawn
+};
 
-// دامەزراندنی تەختەی شەتڕەنج
+// Custom chess piece render function
+function customRenderPiece(piece, isLight) {
+    if (piece === null) return '';
+    
+    const pieceType = piece.charAt(0) === 'w' ? 'w' : 'b';
+    const pieceCode = unicodePieces[piece];
+    const colorClass = pieceType === 'w' ? 'white-piece' : 'black-piece';
+    
+    return `<span class="chess-piece ${colorClass}">${pieceCode}</span>`;
+}
+// Initialize chess board
 function initializeBoard() {
     const config = {
         draggable: true,
@@ -26,13 +51,17 @@ function initializeBoard() {
         onDragStart: onDragStart,
         onDrop: onDrop,
         onSnapEnd: onSnapEnd,
-        pieceTheme: 'https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/img/chesspieces/wikipedia/{piece}.png'
+        pieceTheme: function(piece) {
+            // Used if custom rendering doesn't work
+            return 'https://chessboardjs.com/img/chesspieces/wikipedia/' + piece + '.png';
+        },
+        renderPiece: customRenderPiece
     };
     board = Chessboard('board', config);
     updateStatus();
 }
 
-// دەستپێکردنی یاری
+// Start game
 function startGame() {
     gameActive = true;
     document.getElementById('startBtn').disabled = true;
@@ -41,13 +70,13 @@ function startGame() {
     clearTimers();
     setupTimers();
     startPlayerTimer();
-    updateStatus("یاری دەستیپێکرد. نۆرەی تۆیە (سپی)");
+    updateStatus("Game started. Your turn (white)");
     
-    // ناردنی پەیامی دەستپێکردن بۆ چات
+    // Send start message to chat
     sendMessageToAI("New game started. I'm playing with white stamps. Any tips for getting started?");
 }
 
-// نوێکردنەوەی یاری
+// Reset game
 function newGame() {
     game = new Chess();
     board.position('start');
@@ -61,75 +90,75 @@ function newGame() {
     document.getElementById('aiTimer').textContent = formatTime(gameTime);
     timeLeft.player = gameTime;
     timeLeft.ai = gameTime;
-    updateStatus("ئامادە بۆ دەستپێکردن");
+    updateStatus("Ready to start");
     clearMoveHistory();
     
-    // دەستپێکردنەوەی چات
+    // Reset chat
     addChatMessage("Hi! I'll help you play chess. I can give you advice and analyze the game.", 'bot');
 }
 
-// کاتێک دەست بە ڕاکێشانی مۆرە دەکەیت
+// When starting to drag a piece
 function onDragStart(source, piece, position, orientation) {
-    // ڕێگە نەدان بە جوڵاندنی مۆرە ئەگەر یاری کۆتایی هاتبێت
+    // Don't allow piece movement if game is over
     if (game.game_over() || !gameActive) return false;
     
-    // ڕێگە نەدان بە جوڵاندنی مۆرەی ڕەش (کۆمپیوتەر)
+    // Don't allow dragging black pieces (computer)
     if (piece.search(/^b/) !== -1) return false;
     
-    // ڕێگە نەدان بە جوڵاندنی مۆرە ئەگەر نۆرەی تۆ نەبێت
+    // Don't allow dragging if it's not your turn
     if ((game.turn() === 'b' && playerColor === 'white') ||
         (game.turn() === 'w' && playerColor === 'black')) {
         return false;
     }
 }
 
-// کاتێک مۆرەکە دادەنێیت
+// When dropping a piece
 function onDrop(source, target) {
-    // بزانە جوڵەکە دروستە یان نا
+    // Check if move is valid
     const move = game.move({
         from: source,
         to: target,
-        promotion: 'q' // هەمیشە وەزیر هەڵبژێرە بۆ بەرزکردنەوەی سەرباز
+        promotion: 'q' // Always choose queen for pawn promotion
     });
     
-    // ئەگەر جوڵە دروست نەبێت
+    // If move is invalid
     if (move === null) return 'snapback';
     
-    // بزانە ئایا سەربازەکە گەیشتۆتە ئاخری خانەکان بۆ بەرزکردنەوە
+    // Check if pawn has reached the end for promotion
     if (move.flags.includes('p')) {
-        // بەرزکردنەوەی سەرباز - بە شێوەیەکی ئاسان وەزیر هەڵدەبژێرین
-        // دەتوانیت کاری زیاتر زیاد بکەیت بۆ هەڵبژاردنی جۆری بەرزکردنەوە
+        // Pawn promotion - for simplicity, we automatically choose queen
+        // You can add more functionality for promotion choices
     }
     
-    // تۆمارکردنی جوڵە
+    // Log the move
     logMove(move);
     
-    // ڕاگرتنی کاتژمێری یاریزان و دەستپێکردنی کاتژمێری کۆمپیوتەر
+    // Stop player timer and start computer timer
     pausePlayerTimer();
     startAITimer();
     
-    // ناردنی جوڵەکە بۆ چات بۆ شیکردنەوە
+    // Send move to chat for analysis
     const moveNotation = getMoveNotation(move);
     sendMessageToAI(`I moved: ${moveNotation}. how's this move Analyze it.`);
     
-    // نۆرەی کۆمپیوتەر
+    // Computer's turn
     setTimeout(makeComputerMove, 250);
     
     updateStatus();
 }
 
-// دوای تەواوبوونی ڕاکێشان مۆرەکان ڕێکدەخاتەوە
+// After dragging ends, pieces are rearranged
 function onSnapEnd() {
     board.position(game.fen());
 }
 
-// دروستکردنی جوڵەی کۆمپیوتەر
+// Create computer move
 function makeComputerMove() {
     if (game.game_over() || !gameActive || computerThinking) return;
     
     computerThinking = true;
     
-    // ئاستی سەختی جوڵەی کۆمپیوتەر
+    // Computer move difficulty level
     let depth;
     switch(difficulty) {
         case 'easy': depth = 1; break;
@@ -138,33 +167,33 @@ function makeComputerMove() {
         default: depth = 2;
     }
     
-    // کۆمپیوتەر جوڵەیەک هەڵدەبژێرێت
+    // Computer selects a move
     setTimeout(() => {
         const possibleMoves = game.moves();
         
-        // ئەگەر هیچ جوڵەیەک نەبێت، واتە یاری کۆتایی هاتووە
+        // If no moves are available, game is over
         if (possibleMoves.length === 0) {
             computerThinking = false;
             return;
         }
         
-        // دۆزینەوەی باشترین جوڵە
+        // Find best move
         const computerMove = getBestMove(game, depth);
         
-        // ئەنجامدانی جوڵەی کۆمپیوتەر
+        // Make computer move
         const move = game.move(computerMove);
         
-        // تۆمارکردنی جوڵە
+        // Log move
         logMove(move);
         
-        // نوێکردنەوەی تەختەی شەتڕەنج
+        // Update chess board
         board.position(game.fen());
         
-        // ڕاگرتنی کاتژمێری کۆمپیوتەر و دەستپێکردنی کاتژمێری یاریزان
+        // Stop computer timer and start player timer
         pauseAITimer();
         startPlayerTimer();
         
-        // ناردنی جوڵەی کۆمپیوتەر بۆ چات
+        // Send computer move to chat
         const moveNotation = getMoveNotation(move);
         sendMessageToAI(`The computer moved: ${moveNotation}. Analyze this move and tell me what my best answer is?`);
         
@@ -173,9 +202,9 @@ function makeComputerMove() {
     }, 500);
 }
 
-// هەڵبژاردنی باشترین جوڵە بۆ کۆمپیوتەر
+// Select best move for computer
 function getBestMove(gameState, depth) {
-    // پێوەری هەڵسەنگاندنی دۆخی یاری (دەتوانیت پەرەی پێبدەیت)
+    // Game state evaluation function
     function evaluateBoard(board) {
         let totalEvaluation = 0;
         for (let i = 0; i < 8; i++) {
@@ -186,28 +215,28 @@ function getBestMove(gameState, depth) {
         return totalEvaluation;
     }
     
-    // نرخی هەر مۆرەیەک
+    // Value of each piece
     function getPieceValue(piece, x, y) {
         if (piece === null) return 0;
         
-        // نرخی سەرەتایی بۆ هەر مۆرەیەک
+        // Base value for each piece
         const pieceValue = {
-            'p': 10,   // سەرباز
-            'n': 30,   // ئەسپ
-            'b': 30,   // فیل
-            'r': 50,   // قەڵا
-            'q': 90,   // وەزیر
-            'k': 900   // شا
+            'p': 10,   // Pawn
+            'n': 30,   // Knight
+            'b': 30,   // Bishop
+            'r': 50,   // Rook
+            'q': 90,   // Queen
+            'k': 900   // King
         };
         
-        // نرخ بە پێی جۆری مۆرە
+        // Value based on piece type
         const absoluteValue = pieceValue[piece.type];
         
-        // ئەگەر مۆرە هی کۆمپیوتەر بێت (ڕەش) ئەوا نرخەکە ئەرێنییە، ئەگەر نا نرخەکە نەرێنییە
+        // If piece belongs to computer (black) value is positive, otherwise negative
         return piece.color === 'b' ? absoluteValue : -absoluteValue;
     }
     
-    // ئەلگۆریتمی مینیماکس بۆ دۆزینەوەی باشترین جوڵە
+    // Minimax algorithm to find best move
     function minimax(gameState, depth, alpha, beta, isMaximizingPlayer) {
         if (depth === 0 || gameState.game_over()) {
             return evaluateBoard(gameState);
@@ -244,7 +273,7 @@ function getBestMove(gameState, depth) {
         }
     }
     
-    // دۆزینەوەی باشترین جوڵە بە ئەلگۆریتمی مینیماکس
+    // Find best move using minimax algorithm
     const possibleMoves = gameState.moves();
     let bestMove = null;
     let bestEvaluation = -Infinity;
@@ -252,12 +281,12 @@ function getBestMove(gameState, depth) {
     for (let i = 0; i < possibleMoves.length; i++) {
         gameState.move(possibleMoves[i]);
         
-        // هەڵسەنگاندنی جوڵە
+        // Evaluate move
         const evaluation = minimax(gameState, depth - 1, -Infinity, Infinity, false);
         
         gameState.undo();
         
-        // ئەگەر جوڵەکە باشتر بێت لەوەی پێشوو
+        // If move is better than previous
         if (evaluation > bestEvaluation) {
             bestEvaluation = evaluation;
             bestMove = possibleMoves[i];
@@ -267,7 +296,7 @@ function getBestMove(gameState, depth) {
     return bestMove;
 }
 
-// نوێکردنەوەی حاڵەتی یاری
+// Update game status
 function updateStatus(message) {
     const statusElement = document.getElementById('status');
     
@@ -279,28 +308,28 @@ function updateStatus(message) {
     let status = '';
     
     if (game.in_checkmate()) {
-        status = game.turn() === 'w' ? 'کۆتایی یاری! تۆ دۆڕایت.' : 'پیرۆزە! تۆ بردتەوە!';
+        status = game.turn() === 'w' ? 'Game over! You lost.' : 'Congratulations! You won!';
         showGameOverModal(status);
         updateScores(game.turn() !== 'w');
         gameActive = false;
         clearTimers();
     } else if (game.in_draw()) {
-        status = 'یاری تەواوبوو! یەکسانی.';
+        status = 'Game finished! Draw.';
         showGameOverModal(status);
         gameActive = false;
         clearTimers();
     } else {
-        status = game.turn() === 'w' ? 'نۆرەی تۆیە (سپی)' : 'نۆرەی کۆمپیوتەرە (ڕەش)';
+        status = game.turn() === 'w' ? 'Your turn (white)' : 'Computer\'s turn (black)';
         
         if (game.in_check()) {
-            status += ' - کش!';
+            status += ' - Check!';
         }
     }
     
     statusElement.textContent = status;
 }
 
-// نیشاندانی فۆرمی کۆتایی یاری
+// Show game over modal
 function showGameOverModal(message) {
     const modal = document.getElementById('gameOverModal');
     const modalText = document.getElementById('modalText');
@@ -309,13 +338,13 @@ function showGameOverModal(message) {
     modal.style.display = 'flex';
 }
 
-// نوێکردنەوەی خاڵەکان
+// Update scores
 function updateScores(playerWon) {
     if (playerWon) {
         document.getElementById('playerScore').textContent = 
             parseInt(document.getElementById('playerScore').textContent) + 1;
             
-        // نوێکردنەوەی خاڵ بە پێی ئاستی سەختی
+        // Update score based on difficulty level
         const levelScore = document.getElementById(`${difficulty}Score`);
         levelScore.textContent = parseInt(levelScore.textContent) + 1;
     } else {
@@ -324,7 +353,7 @@ function updateScores(playerWon) {
     }
 }
 
-// تۆمارکردنی جوڵەکان
+// Log moves
 function logMove(move) {
     const moveNumber = Math.floor((game.history().length - 1) / 2) + 1;
     const isWhiteMove = game.history().length % 2 === 1;
@@ -339,11 +368,11 @@ function logMove(move) {
     displayMoveHistory();
 }
 
-// وەرگێڕانی جوڵە بۆ فۆڕماتی ستانداردی شەتڕەنج
+// Convert move to standard chess notation
 function getMoveNotation(move) {
     let notation = '';
     
-    // ئایا کیش یان ماتە
+    // Check if checkmate or check
     if (game.in_checkmate()) {
         notation = move.san + '#';
     } else if (game.in_check()) {
@@ -355,7 +384,7 @@ function getMoveNotation(move) {
     return notation;
 }
 
-// نیشاندانی مێژووی جوڵەکان
+// Display move history
 function displayMoveHistory() {
     const historyElement = document.getElementById('moveHistory');
     historyElement.innerHTML = '';
@@ -364,13 +393,13 @@ function displayMoveHistory() {
     
     moveHistory.forEach((historyItem, index) => {
         if (index % 2 === 0) {
-            // دروستکردنی ڕیزی نوێ بۆ هەر دوو جوڵە (سپی و ڕەش)
+            // Create new row for each pair of moves (white and black)
             currentRow = document.createElement('li');
             currentRow.className = 'move-row';
             currentRow.innerHTML = `<span class="move-number">${historyItem.number}.</span> <span class="white-move">${historyItem.move}</span>`;
             historyElement.appendChild(currentRow);
         } else {
-            // زیادکردنی جوڵەی ڕەش بۆ ڕیزی ئێستا
+            // Add black move to current row
             const blackMove = document.createElement('span');
             blackMove.className = 'black-move';
             blackMove.textContent = historyItem.move;
@@ -378,17 +407,17 @@ function displayMoveHistory() {
         }
     });
     
-    // سکرۆڵکردن بۆ کۆتایی مێژووی جوڵەکان
+    // Scroll to end of move history
     historyElement.scrollTop = historyElement.scrollHeight;
 }
 
-// پاککردنەوەی مێژووی جوڵەکان
+// Clear move history
 function clearMoveHistory() {
     moveHistory = [];
     document.getElementById('moveHistory').innerHTML = '';
 }
 
-// دامەزراندنی کاتژمێرەکان
+// Set up timers
 function setupTimers() {
     timeLeft.player = gameTime;
     timeLeft.ai = gameTime;
@@ -396,14 +425,14 @@ function setupTimers() {
     document.getElementById('aiTimer').textContent = formatTime(timeLeft.ai);
 }
 
-// فۆڕماتکردنی کات
+// Format time
 function formatTime(seconds) {
     const minutes = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
 }
 
-// دەستپێکردنی کاتژمێری یاریزان
+// Start player timer
 function startPlayerTimer() {
     if (!gameActive) return;
     
@@ -414,20 +443,20 @@ function startPlayerTimer() {
         
         if (timeLeft.player <= 0) {
             clearInterval(playerTimer);
-            updateStatus("کات تەواوبوو! تۆ دۆڕایت.");
-            showGameOverModal("کات تەواوبوو! تۆ دۆڕایت.");
+            updateStatus("Time's up! You lost.");
+            showGameOverModal("Time's up! You lost.");
             updateScores(false);
             gameActive = false;
         }
     }, 1000);
 }
 
-// ڕاگرتنی کاتژمێری یاریزان
+// Pause player timer
 function pausePlayerTimer() {
     clearInterval(playerTimer);
 }
 
-// دەستپێکردنی کاتژمێری کۆمپیوتەر
+// Start computer timer
 function startAITimer() {
     if (!gameActive) return;
     
@@ -438,70 +467,70 @@ function startAITimer() {
         
         if (timeLeft.ai <= 0) {
             clearInterval(aiTimer);
-            updateStatus("کات تەواوبوو! تۆ بردتەوە.");
-            showGameOverModal("کات تەواوبوو! تۆ بردتەوە.");
+            updateStatus("Time's up! You won.");
+            showGameOverModal("Time's up! You won.");
             updateScores(true);
             gameActive = false;
         }
     }, 1000);
 }
 
-// ڕاگرتنی کاتژمێری کۆمپیوتەر
+// Pause computer timer
 function pauseAITimer() {
     clearInterval(aiTimer);
 }
 
-// پاککردنەوەی هەموو کاتژمێرەکان
+// Clear all timers
 function clearTimers() {
     clearInterval(playerTimer);
     clearInterval(aiTimer);
 }
 
-// پیشاندانی باشترین جوڵە
+// Show best move hint
 function showHint() {
     if (!gameActive) return;
     
-    // دۆزینەوەی باشترین جوڵە بۆ یاریزان
+    // Find best move for player
     const bestMove = getBestMove(game, 2);
     const hintMove = game.move(bestMove);
     
-    // پیشاندانی جوڵە لەسەر تەختە
+    // Show move on board
     board.position(game.fen());
     
-    // گەڕانەوە بۆ دۆخی پێشوو
+    // Return to previous state
     setTimeout(() => {
         game.undo();
         board.position(game.fen());
         
-        // ناردنی جوڵەکە بۆ چات
+        // Send move to chat
         sendMessageToAI(`Best move in this situation: ${getMoveNotation(hintMove)}. Why is this move good?`);
     }, 1000);
 }
 
-// گەڕانەوە بۆ دواوە
+// Undo move
 function undoMove() {
     if (!gameActive || game.history().length < 2) return;
     
-    // گەڕانەوە بۆ دوو جوڵە پێشوو (جوڵەی یاریزان و کۆمپیوتەر)
-    game.undo(); // گەڕانەوە لە جوڵەی کۆمپیوتەر
-    game.undo(); // گەڕانەوە لە جوڵەی یاریزان
+    // Go back two moves (player and computer)
+    game.undo(); // Undo computer move
+    game.undo(); // Undo player move
     
-    // نوێکردنەوەی تەختە
+    // Update board
     board.position(game.fen());
     
-    // نوێکردنەوەی مێژووی جوڵەکان
+    // Update move history
     moveHistory.pop();
     moveHistory.pop();
     displayMoveHistory();
     
-    // نوێکردنەوەی حاڵەتی یاری
+    // Update game status
     updateStatus();
     
-    // ناردنی پەیام بۆ چات
+    // Send message to chat
     sendMessageToAI("Last two moves back. What advice do you have in this situation?");
 }
 
-// زیادکردنی پەیام بۆ چات
+// Add message to chat
 function addChatMessage(message, sender) {
     const messagesContainer = document.getElementById('chatMessages');
     const messageElement = document.createElement('div');
@@ -509,21 +538,21 @@ function addChatMessage(message, sender) {
     messageElement.textContent = message;
     messagesContainer.appendChild(messageElement);
     
-    // سکرۆڵکردن بۆ کۆتایی چات
+    // Scroll to end of chat
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-// ناردنی پەیام بۆ OpenAI API
+// Send message to OpenAI API
 async function sendMessageToAI(message) {
-    // زیادکردنی پەیامی یاریزان بۆ چات
+    // Add player message to chat
     addChatMessage(message, 'user');
     
-    // نیشاندانی لۆدەر
+    // Show loader
     document.getElementById('chatLoader').style.display = 'block';
     
     try {
-        // ئەو بەشە دەبێت بگۆڕدرێت بە ناردنی پەیام بۆ OpenAI API
-        // ئەمە نموونەیەکە
+        // This part should be changed to send message to OpenAI API
+        // This is an example
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -531,7 +560,7 @@ async function sendMessageToAI(message) {
                 'Authorization': `Bearer ${OPENAI_API_KEY}`
             },
             body: JSON.stringify({
-                model: "gpt-4o-mini",
+                model: "gpt-3.5-turbo",
                 messages: [
                     {
                         "role": "system",
@@ -548,46 +577,46 @@ async function sendMessageToAI(message) {
         
         const data = await response.json();
         
-        // وەرگرتنی وەڵام لە API
+        // Get response from API
         const aiResponse = data.choices[0].message.content;
         
-        // زیادکردنی وەڵامی AI بۆ چات
+        // Add AI response to chat
         addChatMessage(aiResponse, 'bot');
     } catch (error) {
-        console.error('هەڵە لە پەیوەندیکردن بە OpenAI API:', error);
-        addChatMessage("ببورە، هەڵەیەک هەیە لە پەیوەندیکردن بە شیکارکەری شەتڕەنج. تکایە دواتر هەوڵ بدەرەوە.", 'bot');
+        console.error('Error connecting to OpenAI API:', error);
+        addChatMessage("Sorry, there's an error connecting to the chess analyzer. Please try again later.", 'bot');
     }
     
-    // شاردنەوەی لۆدەر
+    // Hide loader
     document.getElementById('chatLoader').style.display = 'none';
 }
 
-// ڕووداوەکانی هەڵبژاردنی کات
+// Time selection events
 document.querySelectorAll('.time-btn').forEach(button => {
     button.addEventListener('click', () => {
-        // لابردنی چالاکی لە هەموو دوگمەکان
+        // Remove active from all buttons
         document.querySelectorAll('.time-btn').forEach(btn => {
             btn.classList.remove('active');
         });
         
-        // زیادکردنی چالاکی بۆ دوگمەی هەڵبژێردراو
+        // Add active to selected button
         button.classList.add('active');
         
-        // هەڵبژاردنی کات
+        // Select time
         const minutes = parseInt(button.getAttribute('data-time'));
         gameTime = minutes * 60;
         
-        // نوێکردنەوەی نیشاندانی کات
+        // Update time display
         document.getElementById('playerTimer').textContent = formatTime(gameTime);
         document.getElementById('aiTimer').textContent = formatTime(gameTime);
         
-        // نوێکردنەوەی کاتی ماوە
+        // Update time left
         timeLeft.player = gameTime;
         timeLeft.ai = gameTime;
     });
 });
 
-// ڕووداوی دەستکردن بە یاری نوێ دوای داخستنی نافیزەی کۆتایی یاری
+// Event for starting new game after closing game over modal
 window.addEventListener('click', (e) => {
     const modal = document.getElementById('gameOverModal');
     if (e.target === modal) {
@@ -596,14 +625,14 @@ window.addEventListener('click', (e) => {
     }
 });
 
-// ڕووداوی بەرزکردنەوەی سەرباز (دەتوانیت پەرەی پێبدەیت لە داهاتوودا)
+// Pawn promotion event (you can expand this in the future)
 function handlePromotion(source, target) {
-    // پێویستە کۆدی بەرزکردنەوەی سەرباز لێرە زیاد بکەیت
-    // بۆ ئێستا، بە شێوەیەکی ئاسان وەزیر هەڵدەبژێرین
-    return 'q'; // q بۆ وەزیر
+    // Add pawn promotion code here
+    // For now, we simply choose queen
+    return 'q'; // q for queen
 }
 
-// دەستکردن بە یاری کاتێک ماڵپەڕ دەکرێتەوە
+// Start game when page loads
 document.addEventListener('DOMContentLoaded', () => {
     initializeBoard();
     newGame();
@@ -617,7 +646,7 @@ document.getElementById('newGameModalBtn').addEventListener('click', () => {
     newGame();
 });
 
-// ڕووداوی ناردنی پەیام لە چات
+// Event for sending message in chat
 document.getElementById('sendBtn').addEventListener('click', () => {
     const chatInput = document.getElementById('chatInput');
     const message = chatInput.value.trim();
@@ -628,7 +657,7 @@ document.getElementById('sendBtn').addEventListener('click', () => {
     }
 });
 
-// ڕووداوی ناردنی پەیام بە کلیلی Enter
+// Event for sending message with Enter key
 document.getElementById('chatInput').addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
         const chatInput = document.getElementById('chatInput');
@@ -641,20 +670,64 @@ document.getElementById('chatInput').addEventListener('keypress', (e) => {
     }
 });
 
-// ڕووداوەکانی هەڵبژاردنی ئاستی سەختی
+// Difficulty level selection events
 document.querySelectorAll('.difficulty-btn').forEach(button => {
     button.addEventListener('click', () => {
-        // لابردنی چالاکی لە هەموو دوگمەکان
+        // Remove active from all buttons
         document.querySelectorAll('.difficulty-btn').forEach(btn => {
             btn.classList.remove('active');
         });
         
-        // زیادکردنی چالاکی بۆ دوگمەی هەڵبژێردراو
+        // Add active to selected button
         button.classList.add('active');
         
-        // هەڵبژاردنی ئاستی سەختی
+        // Select difficulty level
         difficulty = button.getAttribute('data-level');
     });
 });
 
-// ڕووداوە
+// Dark mode management
+function toggleDarkMode() {
+    const body = document.body;
+    const themeToggle = document.getElementById('themeToggle');
+    const themeIcon = themeToggle.querySelector('i');
+    
+    // Toggle mode
+    body.classList.toggle('dark-mode');
+    
+    // Change icon
+    if (body.classList.contains('dark-mode')) {
+        themeIcon.className = 'fas fa-sun';
+        localStorage.setItem('theme', 'dark');
+    } else {
+        themeIcon.className = 'fas fa-moon';
+        localStorage.setItem('theme', 'light');
+    }
+    
+    // Update chess board
+    if (board) {
+        // Save current position
+        const currentPosition = board.position();
+        
+        // Recreate chess board
+        board = Chessboard('board', config);
+        board.position(currentPosition);
+    }
+}
+// Load saved theme
+function loadSavedTheme() {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+        document.body.classList.add('dark-mode');
+        document.getElementById('themeToggle').querySelector('i').className = 'fas fa-sun';
+    }
+}
+
+// Events for dark mode
+document.addEventListener('DOMContentLoaded', (event) => {
+    // Load saved theme
+    loadSavedTheme();
+    
+    // Click event for mode change button
+    document.getElementById('themeToggle').addEventListener('click', toggleDarkMode);
+});
