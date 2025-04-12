@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ku">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Chess Game - یاری شەتڕەنج</title>
+    <title>Chess Game</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
@@ -14,28 +14,30 @@
 <body>
     <div class="container">
         <div class="game-container">
-            <h1>شەترەنج</h1>
+            <h1>Chess</h1>
             
             <div class="difficulty-selector">
-                <button class="difficulty-btn" data-level="easy">ئاسان</button>
-                <button class="difficulty-btn active" data-level="medium">ناوەند</button>
-                <button class="difficulty-btn" data-level="hard">گران</button>
+                <button class="difficulty-btn" data-level="easy">Easy</button>
+                <button class="difficulty-btn active" data-level="medium">Medium</button>
+                <button class="difficulty-btn" data-level="hard">Hard</button>
             </div>
             
             <div class="time-selector">
-                <button class="time-btn" data-time="5">٥ خولەک</button>
-                <button class="time-btn active" data-time="10">١٠ خولەک</button>
-                <button class="time-btn" data-time="15">١٥ خولەک</button>
-                <button class="time-btn" data-time="30">٣٠ خولەک</button>
+                <button class="time-btn" data-time="5">5 min</button>
+                <button class="time-btn active" data-time="10">10 min</button>
+                <button class="time-btn" data-time="15">15 min</button>
+                <button class="time-btn" data-time="30">30 min</button>
             </div>
-            
+            <button class="theme-toggle" id="themeToggle">
+                <i class="fas fa-moon"></i>
+            </button>
             <div class="timer-container">
                 <div class="timer">
-                    <div class="timer-label">تۆ</div>
+                    <div class="timer-label">You</div>
                     <div class="timer-value" id="playerTimer">10:00</div>
                 </div>
                 <div class="timer">
-                    <div class="timer-label">کۆمپیوتەر</div>
+                    <div class="timer-label">Computer</div>
                     <div class="timer-value" id="aiTimer">10:00</div>
                 </div>
             </div>
@@ -44,48 +46,48 @@
                 <div id="board"></div>
             </div>
             
-            <div class="status" id="status">ئامادە بۆ دەستپێکردن</div>
+            <div class="status" id="status">Ready to start</div>
             
             <div class="buttons">
                 <button class="btn btn-primary" id="startBtn">
-                    <i class="fas fa-play"></i> دەستپێکردن
+                    <i class="fas fa-play"></i> Start
                 </button>
                 <button class="btn btn-warning" id="hintBtn" disabled>
-                    <i class="fas fa-lightbulb"></i> پیشاندانی باشترین جوڵە
+                    <i class="fas fa-lightbulb"></i> Show Best Move
                 </button>
                 <button class="btn btn-danger" id="undoBtn" disabled>
-                    <i class="fas fa-undo"></i> گەڕانەوە
+                    <i class="fas fa-undo"></i> Undo
                 </button>
                 <button class="btn btn-success" id="newGameBtn">
-                    <i class="fas fa-plus"></i> یاری نوێ
+                    <i class="fas fa-plus"></i> New Game
                 </button>
             </div>
             
             <div class="game-info">
                 <div class="move-history">
-                    <h3>مێژووی جوڵەکان</h3>
+                    <h3>Move History</h3>
                     <ul class="move-list" id="moveHistory"></ul>
                 </div>
                 <div class="score-board">
-                    <h3>خاڵەکان</h3>
+                    <h3>Scores</h3>
                     <div class="score-item">
-                        <span>تۆ:</span>
+                        <span>You:</span>
                         <span id="playerScore">0</span>
                     </div>
                     <div class="score-item">
-                        <span>کۆمپیوتەر:</span>
+                        <span>Computer:</span>
                         <span id="aiScore">0</span>
                     </div>
                     <div class="score-item">
-                        <span>ئاستی ئاسان:</span>
+                        <span>Easy Level:</span>
                         <span id="easyScore">0</span>
                     </div>
                     <div class="score-item">
-                        <span>ئاستی ناوەند:</span>
+                        <span>Medium Level:</span>
                         <span id="mediumScore">0</span>
                     </div>
                     <div class="score-item">
-                        <span>ئاستی گران:</span>
+                        <span>Hard Level:</span>
                         <span id="hardScore">0</span>
                     </div>
                 </div>
@@ -93,17 +95,17 @@
         </div>
 
         <div class="chat-container">
-            <h2 style="text-align: center;">شیکردنەوەی یاری</h2>
+            <h2 style="text-align: center;">Game Explanation</h2>
             <div class="chat-box" id="chatBox">
                 <div class="chat-messages" id="chatMessages">
                     <div class="chat-message bot-message">
-                        سڵاو! من یارمەتیت دەدەم لە یاری شەترەنج. دەتوانم ئامۆژگاریت بدەم و یاریەکەت بۆ شیبکەمەوە.
+                        Hello! I'm here to help you play chess. I can coach you and explain your game.
                     </div>
                 </div>
             </div>
             <div class="chat-input">
-                <input type="text" id="chatInput" placeholder="پرسیارێک بنووسە...">
-                <button id="sendBtn">ناردن</button>
+                <input type="text" id="chatInput" placeholder="Type your question...">
+                <button id="sendBtn">Send</button>
                 <div class="loader" id="chatLoader"></div>
             </div>
         </div>
@@ -111,32 +113,30 @@
 
     <div class="modal" id="gameOverModal">
         <div class="modal-content">
-            <div class="modal-title" id="modalTitle">یاری کۆتایی هات!</div>
+            <div class="modal-title" id="modalTitle">Game Over!</div>
             <div class="modal-text" id="modalText"></div>
-            <button class="modal-btn btn-primary" id="newGameModalBtn">یاری نوێ</button>
+            <button class="modal-btn btn-primary" id="newGameModalBtn">New Game</button>
         </div>
     </div>
 
     <div class="modal" id="promotionModal">
         <div class="modal-content">
-            <div class="modal-title">سەربازەکەت بەرزکەرەوە</div>
+            <div class="modal-title">Promote Your Pawn</div>
             <div class="promotion-options">
-                <!-- جێگای وێنەکانی سەرباز لێرە دەبێت کە بە JavaScript دروست دەکرێت -->
+                <!-- Piece promotion images will be generated by JavaScript -->
             </div>
         </div>
     </div>
     
-    <!-- ئەم JavaScript کۆدە دەبێت زیاد بکرێت بۆ ئەوەی لە مۆبایل باشتر کار بکات -->
     <script>
-        // زیادکراو بۆ چاککردنی شاشەی مۆبایل
+        // Resize board on mobile screen change
         window.addEventListener('resize', function() {
-            // ڕیسایز کردنی بۆردی شەتڕەنج کاتێک شاشەکە دەگۆڕێت
             if (window.board) {
                 window.board.resize();
             }
         });
-        
-        // دڵنیابوون لەوەی کە بۆردی شەتڕەنج بە دروستی ڕیسایز کراوە
+
+        // Ensure board is resized on load
         document.addEventListener('DOMContentLoaded', function() {
             setTimeout(function() {
                 if (window.board) {
