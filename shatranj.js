@@ -16,7 +16,7 @@ let moveHistory = [];
 let currentPromotion = null;
 
 // دامەزراندنی API بۆ OpenAI
-const OPENAI_API_KEY = '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'; // لێرە API کلیلی خۆت دابنێ بەڵام لە کۆدی کۆتاییدا نەیهێڵە
+const OPENAI_API_KEY = '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'; // لێرە API کلیلی خۆت دابنێ بەڵام لە کۆدی کۆتاییدا نەیهێڵە
 
 // دامەزراندنی تەختەی شەتڕەنج
 function initializeBoard() {
